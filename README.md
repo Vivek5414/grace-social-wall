@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Grace Social Wall
+
+Grace Social Wall is a responsive admin dashboard for reviewing social content in a demo workspace.
 
 ## Getting Started
 
-First, run the development server:
+Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the dashboard.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Dashboard behavior
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- The admin dashboard reads posts, hashtag relationships, hashtags, and moderation activity from the existing Supabase tables using the signed-in administrator's session.
+- Post totals use database counts. Platform distribution describes only the latest 100 loaded posts.
+- Approve, Reject, and Remove update `social_posts` and append an entry to `social_moderation_logs`. Removing a post sets its status to `removed`; it does not delete the database row.
+- Administrators can create, edit, activate/deactivate, and delete hashtags. The foreign key may block deleting a hashtag already associated with posts.
+- The dedicated private `grace-social-wall-media` bucket stores admin-uploaded post attachments. The dashboard issues five-minute signed links after verifying administrator access.
+- All four social platform cards start as **Not connected**. OAuth, credentials, sync jobs, sync logs, and persisted workspace preferences are not implemented.
+- Reusable dashboard components are organized under `src/components/dashboard/`; Supabase reads are in `src/lib/dashboard/data.ts`.
+- Dashboard styles use global CSS in `src/app/globals.css`.
 
-## Learn More
+## Administrator Access Setup
 
-To learn more about Next.js, take a look at the following resources:
+1. In the Supabase Dashboard for this project, open **SQL Editor** and run `supabase/migrations/20261122162000_admin_allowlist.sql`.
+2. Then run `supabase/migrations/20261122170000_admin_social_moderation_policies.sql`. It adds policies and grants to the existing social tables; it does not recreate or rename them.
+3. Run `supabase/migrations/20261122170500_admin_social_grant_reconciliation.sql` to reassert the least-privilege grants and enable allowlisted administrators to delete hashtags. This is safe to use after the second migration; do not rerun a migration whose policies already exist. Foreign-key references can still prevent deleting a hashtag used by posts.
+4. Run `supabase/migrations/20261122192000_admin_private_media_bucket.sql` to create the new private media bucket and bucket-scoped admin policies. It does not modify existing buckets or policies.
+5. In **Authentication → Settings**, disable public sign-ups. Provision administrator users through the Supabase Dashboard, not a public registration page.
+6. In **Authentication → Users**, invite the administrator. Copy that user's UUID and add it in the SQL Editor:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   ```sql
+   insert into public.admin_users (user_id)
+   values ('<AUTH_USER_UUID>'::uuid)
+   on conflict (user_id) do nothing;
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The first migration grants no browser insert, update, or delete access to `admin_users`. It creates `public.is_admin()` for the social moderation policies. The second migration establishes the RLS policies and least-privilege grants. The third reasserts those grants (including removal of privileges such as `TRUNCATE`) and grants hashtag deletion to allowlisted administrators only. RLS policies preserve reads for active hashtags, approved posts, and their hashtag links. Post deletion is not granted, and moderation logs can only be read or inserted by administrators (logs are immutable).
 
-## Deploy on Vercel
+The admin dashboard requires both migrations and an allowlisted administrator. Social post reads and moderation actions also depend on the administrator RLS policies from the second migration.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Run the project checks with:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run lint
+npm test
+npm run build
+```
+
+`npm test` performs read-only route smoke checks against `GRACE_SOCIAL_WALL_BASE_URL` (defaults to `http://localhost:3000`) and expects the app to be running. It does not sign in or change database records.
