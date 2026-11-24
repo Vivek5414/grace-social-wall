@@ -1,11 +1,21 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isLocalDevelopmentAuthBypassEnabled } from "@/lib/auth/dev-bypass";
-import { getSupabasePublicConfig } from "@/lib/supabase/env";
+import {
+  getSupabasePublicConfig,
+  hasSupabasePublicConfig,
+} from "@/lib/supabase/env";
 
 export async function proxy(request: NextRequest) {
   if (isLocalDevelopmentAuthBypassEnabled()) {
     return NextResponse.next();
+  }
+
+  if (!hasSupabasePublicConfig()) {
+    const demoUrl = request.nextUrl.clone();
+    demoUrl.pathname = "/demo";
+    demoUrl.search = "";
+    return NextResponse.redirect(demoUrl);
   }
 
   let response = NextResponse.next({ request });

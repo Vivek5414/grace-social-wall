@@ -84,8 +84,7 @@ export default function IntegrationsPanel() {
         <div className="integration-notice">
           <CircleHelp size={16} aria-hidden="true" />
           <p>
-            No platform connections are configured. This dashboard does not store API credentials
-            or claim that a platform is connected.
+            OAuth connections are not configured. Platform integrations remain disconnected.
           </p>
         </div>
       </section>

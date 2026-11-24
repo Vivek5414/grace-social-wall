@@ -1,8 +1,19 @@
+function readSupabasePublicConfig() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const publishableKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+
+  return { url, apiKey: publishableKey || anonKey };
+}
+
+export function hasSupabasePublicConfig(): boolean {
+  const { url, apiKey } = readSupabasePublicConfig();
+  return Boolean(url && apiKey);
+}
+
 export function getSupabasePublicConfig() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const apiKey =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const { url, apiKey } = readSupabasePublicConfig();
 
   if (!url || !apiKey) {
     throw new Error(

@@ -16,6 +16,7 @@ import SettingsPanel from "@/components/dashboard/SettingsPanel";
 import StatsCards from "@/components/dashboard/StatsCards";
 import SyncLogsPanel from "@/components/dashboard/SyncLogsPanel";
 import { reviewPostAction } from "@/app/admin/actions";
+import type { InstagramRecentFeedResult } from "@/lib/instagram/graph-api";
 import type {
   ApprovalStatus,
   DashboardCounts,
@@ -70,6 +71,8 @@ export default function Dashboard({ initialData }: DashboardProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ message: string; error: boolean } | null>(null);
+  const [recentInstagramFeed, setRecentInstagramFeed] =
+    useState<InstagramRecentFeedResult | null>(null);
 
   const previewMode = initialData.developmentBypass;
   const pendingCount = counts.pending;
@@ -274,6 +277,7 @@ export default function Dashboard({ initialData }: DashboardProps) {
               processingId={processingId}
               onSearchChange={setSearch}
               onReview={reviewPost}
+              recentInstagramFeed={recentInstagramFeed}
             />
           )}
 
@@ -338,6 +342,8 @@ export default function Dashboard({ initialData }: DashboardProps) {
               initialHashtags={initialData.hashtags}
               loadError={initialData.errors.hashtags}
               previewMode={previewMode}
+              onRecentFeedChange={setRecentInstagramFeed}
+              onOpenRecentFeed={() => setActiveSection("Social Posts")}
             />
           )}
 

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import LoginForm from "@/components/auth/LoginForm";
+import { hasSupabasePublicConfig } from "@/lib/supabase/env";
 import styles from "./login.module.css";
 
 export const metadata: Metadata = {
@@ -21,6 +23,10 @@ async function LoginPageForm({ searchParams }: LoginPageProps) {
 }
 
 export default function LoginPage({ searchParams }: LoginPageProps) {
+  if (!hasSupabasePublicConfig()) {
+    redirect("/demo");
+  }
+
   return (
     <main className={styles.page}>
       <section className={styles.card} aria-labelledby="login-title">

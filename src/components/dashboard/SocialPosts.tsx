@@ -17,6 +17,8 @@ import PostMediaManager from "@/components/dashboard/PostMediaManager";
 import PostPreviewPlaceholder from "@/components/dashboard/PostPreviewPlaceholder";
 import { formatDateTime } from "@/lib/format-date";
 import { getSafeExternalUrl } from "@/lib/external-url";
+import InstagramMediaCard from "@/components/dashboard/InstagramMediaCard";
+import type { InstagramRecentFeedResult } from "@/lib/instagram/graph-api";
 
 type PlatformFilter = "all" | SocialPlatform;
 type StatusFilter = "all" | ApprovalStatus;
@@ -28,6 +30,7 @@ interface SocialPostsProps {
   loadError?: string;
   previewMode: boolean;
   processingId: string | null;
+  recentInstagramFeed: InstagramRecentFeedResult | null;
   onSearchChange: (value: string) => void;
   onReview: (id: string, status: "approved" | "rejected" | "removed") => Promise<void>;
 }
@@ -61,6 +64,7 @@ export default function SocialPosts({
   loadError,
   previewMode,
   processingId,
+  recentInstagramFeed,
   onSearchChange,
   onReview,
 }: SocialPostsProps) {
@@ -80,6 +84,33 @@ export default function SocialPosts({
 
   return (
     <>
+      {recentInstagramFeed && (
+        <section
+          className="content-panel instagram-recent-feed"
+          aria-label="Recent Instagram posts"
+        >
+          <PanelHeading
+            title="Recent Instagram posts"
+            description={`Temporary live results for #${recentInstagramFeed.hashtag}. They are not saved to Supabase or available for moderation.`}
+            action={
+              <span className="submissions-total">
+                {recentInstagramFeed.posts.length} recent
+              </span>
+            }
+          />
+          {recentInstagramFeed.posts.length > 0 ? (
+            <div className="instagram-result-grid">
+              {recentInstagramFeed.posts.map((post) => (
+                <InstagramMediaCard key={post.id} post={post} />
+              ))}
+            </div>
+          ) : (
+            <p className="empty-state instagram-discovery-empty" role="status">
+              No recent public posts are available for this hashtag.
+            </p>
+          )}
+        </section>
+      )}
       <section className="content-panel social-posts-panel" aria-label="Social posts">
         <PanelHeading
           title="Social posts"

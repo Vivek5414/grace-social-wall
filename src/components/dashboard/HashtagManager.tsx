@@ -1,24 +1,23 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { FormEvent } from "react";
 import {
   Check,
   Edit3,
   Hash,
-  Plus,
   Power,
   Search,
   Trash2,
   X,
 } from "lucide-react";
 import {
-  createHashtagAction,
   deleteHashtagAction,
   setHashtagActiveAction,
   updateHashtagAction,
 } from "@/app/admin/actions";
+import InstagramHashtagDiscovery from "@/components/dashboard/InstagramHashtagDiscovery";
 import PanelHeading from "@/components/dashboard/PanelHeading";
+import type { InstagramRecentFeedResult } from "@/lib/instagram/graph-api";
 import { formatDateTime } from "@/lib/format-date";
 import type { ActionResult, SocialHashtag } from "@/types";
 
@@ -28,16 +27,18 @@ interface HashtagManagerProps {
   initialHashtags: SocialHashtag[];
   loadError?: string;
   previewMode?: boolean;
+  onRecentFeedChange?: (result: InstagramRecentFeedResult | null) => void;
+  onOpenRecentFeed?: () => void;
 }
 
 export default function HashtagManager({
   initialHashtags,
   loadError,
   previewMode = false,
+  onRecentFeedChange,
+  onOpenRecentFeed,
 }: HashtagManagerProps) {
   const [hashtags, setHashtags] = useState(initialHashtags);
-  const [newValue, setNewValue] = useState("");
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
   const [search, setSearch] = useState("");
@@ -86,16 +87,6 @@ export default function HashtagManager({
     }
   }
 
-  async function addHashtag(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    await runAction(() => createHashtagAction(newValue), (created) => {
-      setHashtags((current) => [created, ...current]);
-      setNewValue("");
-      setSearch("");
-      setStatusFilter("all");
-    });
-  }
-
   async function saveEdit(id: string) {
     await runAction(
       () => updateHashtagAction(id, editingValue),
@@ -132,10 +123,10 @@ export default function HashtagManager({
     previewMode
       ? "No real hashtags are loaded in Developer Preview."
       : loadError
-      ? "Hashtag records are unavailable."
-      : hashtags.length === 0
-      ? "No hashtags have been added to this workspace yet."
-      : "No hashtags match your search and status filter.";
+        ? "Hashtag records are unavailable."
+        : hashtags.length === 0
+          ? "No hashtags are configured for this workspace yet."
+          : "No hashtags match your search and status filter.";
 
   return (
     <>
@@ -144,20 +135,9 @@ export default function HashtagManager({
           title="Hashtag manager"
           description="Manage the tags used to discover social posts."
           action={
-            <>
-              <span className="submissions-total">
-                {previewMode ? "Developer Preview" : `${hashtags.length} total`}
-              </span>
-              <button
-                type="button"
-                className="primary-button hashtag-add-trigger"
-                disabled={!previewMode && Boolean(loadError)}
-                onClick={() => setAddDialogOpen(true)}
-              >
-                <Plus size={14} aria-hidden="true" />
-                Add hashtag
-              </button>
-            </>
+            <span className="submissions-total">
+              {previewMode ? "Developer Preview" : `${hashtags.length} total`}
+            </span>
           }
         />
 
@@ -348,8 +328,6 @@ export default function HashtagManager({
                         </button>
                         <span>Controls are placeholders until a real hashtag record is loaded.</span>
                       </div>
-                    ) : hashtags.length === 0 && !loadError ? (
-                      <span>Add a hashtag above to begin organizing posts.</span>
                     ) : null}
                   </td>
                 </tr>
@@ -363,86 +341,10 @@ export default function HashtagManager({
         </div>
       </section>
 
-      {addDialogOpen && (
-        <div
-          className="modal-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !busy) setAddDialogOpen(false);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Escape" && !busy) setAddDialogOpen(false);
-          }}
-        >
-          <section
-            className="integration-dialog hashtag-form-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="add-hashtag-title"
-            aria-describedby="add-hashtag-description"
-          >
-            <button
-              type="button"
-              className="icon-button dialog-close"
-              aria-label="Close add hashtag dialog"
-              disabled={busy}
-              onClick={() => setAddDialogOpen(false)}
-            >
-              <X size={18} aria-hidden="true" />
-            </button>
-            <span className="hashtag-dialog-icon"><Hash size={19} aria-hidden="true" /></span>
-            <h2 id="add-hashtag-title">Add a hashtag</h2>
-            <p id="add-hashtag-description">
-              {previewMode
-                ? "This form is for visual testing only. No hashtag will be created."
-                : "Add a tag to organize incoming social posts."}
-            </p>
-            <form className="hashtag-dialog-form" onSubmit={addHashtag}>
-              <label htmlFor="new-hashtag">Hashtag</label>
-              <input
-                id="new-hashtag"
-                type="text"
-                maxLength={100}
-                value={newValue}
-                onChange={(event) => setNewValue(event.target.value)}
-                placeholder="#your-brand-tag"
-                required
-                disabled={busy || (!previewMode && Boolean(loadError))}
-              />
-              {previewMode && (
-                <p className="preview-inline-notice">
-                  Saving is disabled while Developer Preview is active.
-                </p>
-              )}
-              {feedback && (
-                <p
-                  className={feedback.error ? "inline-error" : "inline-success"}
-                  role={feedback.error ? "alert" : "status"}
-                >
-                  {feedback.message}
-                </p>
-              )}
-              <div className="hashtag-dialog-actions">
-                <button
-                  type="button"
-                  className="secondary-button"
-                  disabled={busy}
-                  onClick={() => setAddDialogOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="primary-button"
-                  disabled={busy || previewMode || Boolean(loadError)}
-                >
-                  <Plus size={14} aria-hidden="true" />
-                  {previewMode ? "Preview only" : busy ? "Saving…" : "Add hashtag"}
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
-      )}
+      <InstagramHashtagDiscovery
+        onRecentFeedChange={onRecentFeedChange}
+        onOpenRecentFeed={onOpenRecentFeed}
+      />
 
       {hashtagToDelete && (
         <div
